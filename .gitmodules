@@ -1,3 +1,0 @@
-[submodule "okvis"]
-	path = okvis
-	url = git@github.com:ethz-asl/okvis.git
