@@ -63,11 +63,11 @@ then download and expand the archive into your catkin workspace:
 Or, if you were given bitbucket access, clone the repository into your catkin
 workspace:
 
-    git clone --recursive git@bitbucket.org:sleutenegger/okvis_ros.git
+    git clone --recursive git@github.com:ethz-asl/okvis_ros.git
 
 or
 
-    git clone --recursive https://sleutenegger@bitbucket.org/sleutenegger/okvis_ros.git
+    git clone --recursive https://github.com/ethz-asl/okvis_ros.git
 
 ### Building the project ###
 
