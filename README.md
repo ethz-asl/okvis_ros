@@ -60,8 +60,7 @@ then download and expand the archive into your catkin workspace:
     wget https://www.doc.ic.ac.uk/~sleutene/software/okvis_ros-1.1.1.zip
     unzip okvis_ros-1.1.1.zip && rm okvis_ros-1.1.1.zip
 
-Or, if you were given bitbucket access, clone the repository into your catkin
-workspace:
+Or, clone the repository from github into your catkin workspace:
 
     git clone --recursive git@github.com:ethz-asl/okvis_ros.git
 
