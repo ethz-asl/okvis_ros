@@ -14,7 +14,7 @@ find_package(catkin REQUIRED
 )
 
 # generate dynamic reconfigure stuff
-generate_dynamic_reconfigure_options(cfg/okvis_ros.cfg)
+generate_dynamic_reconfigure_options(cfg/Camera.cfg)
 
 catkin_package(
     DEPENDS
