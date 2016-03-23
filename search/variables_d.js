@@ -32,6 +32,7 @@ var searchData=
   ['maxpositioninputqueuesize_5f',['maxPositionInputQueueSize_',['../classokvis_1_1ThreadedKFVio.html#ae393652f4e299c5a37d28984414fac95',1,'okvis::ThreadedKFVio']]],
   ['measurement',['measurement',['../structokvis_1_1Measurement.html#ab6e50b5c72610da5b908ea09f95e073c',1,'okvis::Measurement']]],
   ['measurement_5f',['measurement_',['../classokvis_1_1ceres_1_1HomogeneousPointError.html#a53b6176d9106901082cffd211c487de5',1,'okvis::ceres::HomogeneousPointError::measurement_()'],['../classokvis_1_1ceres_1_1PoseError.html#a68ce26427693215652c47530c86342f4',1,'okvis::ceres::PoseError::measurement_()'],['../classokvis_1_1ceres_1_1ReprojectionError.html#a9134d5c876130c1a0190fee0088ca1e1',1,'okvis::ceres::ReprojectionError::measurement_()'],['../classokvis_1_1ceres_1_1SpeedAndBiasError.html#a9edf730377a92496ed32c7bd6830b418',1,'okvis::ceres::SpeedAndBiasError::measurement_()']]],
+  ['meshmsg_5f',['meshMsg_',['../classokvis_1_1Publisher.html#a5f63b91b4483f4253a01f2885d7d49e2',1,'okvis::Publisher']]],
   ['mfida_5f',['mfIdA_',['../classokvis_1_1VioKeyframeWindowMatchingAlgorithm.html#a349d8420dad6631933dcf56812917891',1,'okvis::VioKeyframeWindowMatchingAlgorithm']]],
   ['mfidb_5f',['mfIdB_',['../classokvis_1_1VioKeyframeWindowMatchingAlgorithm.html#a0af5ac458f0c35a12f0bfee3353657b0',1,'okvis::VioKeyframeWindowMatchingAlgorithm']]],
   ['min_5fiterations',['min_iterations',['../structokvis_1_1Optimization.html#a7df176e371db644924264e4e19c3a4a3',1,'okvis::Optimization']]],

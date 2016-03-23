@@ -250,6 +250,9 @@ Private Attributes</h2></td></tr>
 <tr class="memitem:acdeee2e5a2cbd11fa4748d77e196d982"><td class="memItemLeft" align="right" valign="top">ros::Publisher&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classokvis_1_1Publisher.html#acdeee2e5a2cbd11fa4748d77e196d982">pubTransform_</a></td></tr>
 <tr class="memdesc:acdeee2e5a2cbd11fa4748d77e196d982"><td class="mdescLeft">&#160;</td><td class="mdescRight">The publisher for the transform.  <a href="#acdeee2e5a2cbd11fa4748d77e196d982">More...</a><br/></td></tr>
 <tr class="separator:acdeee2e5a2cbd11fa4748d77e196d982"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a793831cf3b4969fa73caf23e54c58119"><td class="memItemLeft" align="right" valign="top">ros::Publisher&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classokvis_1_1Publisher.html#a793831cf3b4969fa73caf23e54c58119">pubMesh_</a></td></tr>
+<tr class="memdesc:a793831cf3b4969fa73caf23e54c58119"><td class="mdescLeft">&#160;</td><td class="mdescRight">The publisher for a robot / camera mesh.  <a href="#a793831cf3b4969fa73caf23e54c58119">More...</a><br/></td></tr>
+<tr class="separator:a793831cf3b4969fa73caf23e54c58119"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1a93326be3437299fad1e66b943e5427"><td class="memItemLeft" align="right" valign="top">std::vector<br class="typebreak"/>
 &lt; image_transport::Publisher &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classokvis_1_1Publisher.html#a1a93326be3437299fad1e66b943e5427">pubImagesVector_</a></td></tr>
 <tr class="memdesc:a1a93326be3437299fad1e66b943e5427"><td class="mdescLeft">&#160;</td><td class="mdescRight">The publisher for the images.  <a href="#a1a93326be3437299fad1e66b943e5427">More...</a><br/></td></tr>
@@ -286,6 +289,9 @@ Private Attributes</h2></td></tr>
 <tr class="memitem:a3d65542e37b4b36c16e55904a9e54ed9"><td class="memItemLeft" align="right" valign="top">nav_msgs::Path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classokvis_1_1Publisher.html#a3d65542e37b4b36c16e55904a9e54ed9">path_</a></td></tr>
 <tr class="memdesc:a3d65542e37b4b36c16e55904a9e54ed9"><td class="mdescLeft">&#160;</td><td class="mdescRight">The path message.  <a href="#a3d65542e37b4b36c16e55904a9e54ed9">More...</a><br/></td></tr>
 <tr class="separator:a3d65542e37b4b36c16e55904a9e54ed9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5f63b91b4483f4253a01f2885d7d49e2"><td class="memItemLeft" align="right" valign="top">visualization_msgs::Marker&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classokvis_1_1Publisher.html#a5f63b91b4483f4253a01f2885d7d49e2">meshMsg_</a></td></tr>
+<tr class="memdesc:a5f63b91b4483f4253a01f2885d7d49e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mesh message.  <a href="#a5f63b91b4483f4253a01f2885d7d49e2">More...</a><br/></td></tr>
+<tr class="separator:a5f63b91b4483f4253a01f2885d7d49e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>This class handles the publishing to either ROS topics or files. </p>
@@ -1347,6 +1353,28 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a5f63b91b4483f4253a01f2885d7d49e2"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">visualization_msgs::Marker okvis::Publisher::meshMsg_</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Mesh message. </p>
+
+</div>
+</div>
 <a class="anchor" id="a42a5b1bcec9c27cf6d40a3ebcf133f69"></a>
 <div class="memitem">
 <div class="memproto">
@@ -1567,6 +1595,28 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a793831cf3b4969fa73caf23e54c58119"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">ros::Publisher okvis::Publisher::pubMesh_</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The publisher for a robot / camera mesh. </p>
+
+</div>
+</div>
 <a class="anchor" id="a4d2b4294f87eb91fc065e8f76ddb2d91"></a>
 <div class="memitem">
 <div class="memproto">
@@ -1728,7 +1778,7 @@ Private Attributes</h2></td></tr>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Thu Feb 4 2016 19:27:16 for OKVIS ROS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Mar 23 2016 11:52:43 for OKVIS ROS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>
