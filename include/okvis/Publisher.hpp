@@ -273,6 +273,7 @@ class Publisher
   ros::Publisher pubObometry_;  ///< The publisher for the odometry.
   ros::Publisher pubPath_;  ///< The publisher for the path.
   ros::Publisher pubTransform_; ///< The publisher for the transform.
+  ros::Publisher pubMesh_; ///< The publisher for a robot / camera mesh.
   std::vector<image_transport::Publisher> pubImagesVector_; ///< The publisher for the images.
   std::vector<image_transport::ImageTransport> imageTransportVector_; ///< The image transporters.
 
@@ -289,6 +290,7 @@ class Publisher
   pcl::PointCloud<pcl::PointXYZRGB> pointsTransferred_; ///< Point cloud for transferred/marginalised points.
   std::vector<cv::Mat> images_; ///< The images.
   nav_msgs::Path path_; ///< The path message.
+  visualization_msgs::Marker meshMsg_; ///< Mesh message.
 
   /// @}
 

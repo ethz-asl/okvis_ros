@@ -102,6 +102,15 @@ void Publisher::setNodeHandle(ros::NodeHandle& nh)
   pubPath_ = nh_->advertise<nav_msgs::Path>("okvis_path", 1);
   pubTransform_ = nh_->advertise<geometry_msgs::TransformStamped>(
       "okvis_transform", 1);
+  pubMesh_ = nh_->advertise<visualization_msgs::Marker>( "okvis_mesh", 0 );
+  // where to get the mesh from
+  std::string mesh_file;
+  if (nh_->getParam("mesh_file", mesh_file)) {
+    meshMsg_.mesh_resource = "package://okvis_ros/meshes/"+mesh_file;
+  } else {
+    LOG(INFO) << "no mesh found for visualisation, set ros param mesh_file, if desired";
+    meshMsg_.mesh_resource = "";
+  }
 }
 
 // Write CSV header.
@@ -221,6 +230,44 @@ void Publisher::setPose(const okvis::kinematics::Transformation& T_WS)
   poseMsg_.transform.translation.y = r[1];
   poseMsg_.transform.translation.z = r[2];
 
+  // also do the mesh
+  /*if (parameters_.publishing.trackedBodyFrame == FrameName::S) {
+    meshMsg_.child_frame_id = "sensor";
+  } else if (parameters_.publishing.trackedBodyFrame == FrameName::B) {
+    meshMsg_.child_frame_id = "body";
+  } else {
+    meshMsg_.child_frame_id = "body";
+  }*/
+  meshMsg_.header.frame_id = "world";
+  meshMsg_.header.stamp = _t;
+  meshMsg_.type = visualization_msgs::Marker::MESH_RESOURCE;
+  if ((ros::Time::now() - _t).toSec() > 10.0)
+    meshMsg_.header.stamp = ros::Time::now();
+
+  // fill orientation
+  meshMsg_.pose.orientation.x = q.x();
+  meshMsg_.pose.orientation.y = q.y();
+  meshMsg_.pose.orientation.z = q.z();
+  meshMsg_.pose.orientation.w = q.w();
+
+  // fill position
+  meshMsg_.pose.position.x = r[0];
+  meshMsg_.pose.position.y = r[1];
+  meshMsg_.pose.position.z = r[2];
+
+  // scale -- needed
+  meshMsg_.scale.x = 1.0;
+  meshMsg_.scale.y = 1.0;
+  meshMsg_.scale.z = 1.0;
+	
+	meshMsg_.action = visualization_msgs::Marker::ADD;
+	meshMsg_.color.a = 1.0; // Don't forget to set the alpha!
+	meshMsg_.color.r = 1.0;
+	meshMsg_.color.g = 1.0;
+	meshMsg_.color.b = 1.0;
+
+  // embedded material / colour
+  //meshMsg_.mesh_use_embedded_materials = true;
 }
 
 // Set the odometry message that is published next.
@@ -413,6 +460,8 @@ void Publisher::publishPose()
   if ((_t - lastOdometryTime2_).toSec() < 1.0 / parameters_.publishing.publishRate)
     return;  // control the publish rate
   pubTf_.sendTransform(poseMsg_);
+  if(!meshMsg_.mesh_resource.empty())
+    pubMesh_.publish(meshMsg_);  //publish stamped mesh
   lastOdometryTime2_ = _t;  // remember
 }
 
@@ -422,6 +471,8 @@ void Publisher::publishOdometry()
   if ((_t - lastOdometryTime_).toSec() < 1.0 / parameters_.publishing.publishRate)
     return;  // control the publish rate
   pubObometry_.publish(odometryMsg_);
+  if(!meshMsg_.mesh_resource.empty())
+    pubMesh_.publish(meshMsg_);  //publish stamped mesh
   lastOdometryTime_ = _t;  // remember
 }
 
