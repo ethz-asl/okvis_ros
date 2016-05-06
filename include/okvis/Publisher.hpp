@@ -115,6 +115,16 @@ class Publisher
   /// \param csvFileName  The filename of a new file
   bool setLandmarksCsvFile(std::string csvFileName);
 
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFile      The file
+  bool setDescriptorsCsvFile(std::fstream& csvFile);
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFileName  The filename of a new file
+  bool setDescriptorsCsvFile(std::string& csvFileName);
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFileName  The filename of a new file
+  bool setDescriptorsCsvFile(std::string csvFileName);
+
   /**
    * @brief Set the pose message that is published next.
    * @param T_WS The pose.
@@ -201,7 +211,8 @@ class Publisher
    */
   void publishLandmarksAsCallback(
       const okvis::Time & t, const okvis::MapPointVector & actualLandmarks,
-      const okvis::MapPointVector & transferredLandmarks);
+      const okvis::MapPointVector & transferredLandmarks,
+      const okvis::MapPointDescriptorVector & transferredDescriptors);
 
   /**
    * @brief Set and write full state to CSV file.
@@ -244,6 +255,15 @@ class Publisher
       const okvis::Time & t, const okvis::MapPointVector & actualLandmarks,
       const okvis::MapPointVector & transferredLandmarks);
 
+  /**
+   * @brief Set and write descriptors to file.
+   * @remark This can be registered with the VioInterface.
+   * @param transferredDescriptors Descriptors that were marginalised out.
+   */
+  void csvSaveDescriptorsAsCallback(
+      const okvis::MapPointDescriptorVector & transferredDescriptors,
+      const okvis::MapPointVector & transferredLandmarks);
+
   /// @brief Publish the last set odometry.
   void publishOdometry();
   /// @brief Publish the last set points.
@@ -261,6 +281,8 @@ class Publisher
   bool writeCsvDescription();
   /// @brief Write CSV header for landmarks file.
   bool writeLandmarksCsvDescription();
+  /// @brief Write CSV header for landmarks file.
+  bool writeDescriptorsCsvDescription();
 
   /// @name Node and subscriber related
   /// @{
@@ -304,6 +326,7 @@ class Publisher
 
   std::shared_ptr<std::fstream> csvFile_; ///< CSV file to save state in.
   std::shared_ptr<std::fstream> csvLandmarksFile_;  ///< CSV file to save landmarks in.
+  std::shared_ptr<std::fstream> csvDescriptorsFile_;  ///< CSV file to save descriptors in.
 
 };
 

@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
   okvis::ThreadedKFVio okvis_estimator(parameters);
 
   okvis_estimator.setFullStateCallback(std::bind(&okvis::Publisher::publishFullStateAsCallback,&publisher,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3,std::placeholders::_4));
-  okvis_estimator.setLandmarksCallback(std::bind(&okvis::Publisher::publishLandmarksAsCallback,&publisher,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+  okvis_estimator.setLandmarksCallback(std::bind(&okvis::Publisher::publishLandmarksAsCallback,&publisher,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3,std::placeholders::_4));
   okvis_estimator.setStateCallback(std::bind(&okvis::Publisher::publishStateAsCallback,&publisher,std::placeholders::_1,std::placeholders::_2));
   okvis_estimator.setBlocking(true);
   publisher.setParameters(parameters); // pass the specified publishing stuff
@@ -121,6 +121,7 @@ int main(int argc, char **argv) {
   // setup files to be written
   publisher.setCsvFile(path + "/okvis_estimator_output.csv");
   publisher.setLandmarksCsvFile(path + "/okvis_estimator_landmarks.csv");
+  publisher.setDescriptorsCsvFile(path + "/okvis_estimator_descriptors.csv");
   okvis_estimator.setImuCsvFile(path + "/imu0_data.csv");
   for (size_t i = 0; i < numCameras; ++i) {
     std::stringstream num;
@@ -131,7 +132,7 @@ int main(int argc, char **argv) {
   // open the bag
   rosbag::Bag bag(argv[2], rosbag::bagmode::Read);
   // views on topics. the slash is needs to be correct, it's ridiculous...
-  std::string imu_topic("/imu0");
+  std::string imu_topic("/imu0"/*"/mavros/imu/data_raw"*/);
   rosbag::View view_imu(
       bag,
       rosbag::TopicQuery(imu_topic));
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
   std::vector<okvis::Time> times;
   okvis::Time latest(0);
   for(size_t i=0; i<numCameras;++i) {
-    std::string camera_topic("/cam"+std::to_string(i)+"/image_raw");
+    std::string camera_topic("/cam0/image_raw"/*"/v4l/camera/image_raw"*/);
     std::shared_ptr<rosbag::View> view_ptr(
         new rosbag::View(
             bag,
@@ -205,9 +206,18 @@ int main(int argc, char **argv) {
     for(size_t i=0; i<numCameras;++i) {
       sensor_msgs::ImageConstPtr msg1 = view_cam_iterators[i]
           ->instantiate<sensor_msgs::Image>();
-      cv::Mat filtered(msg1->height, msg1->width, CV_8UC1);
-      memcpy(filtered.data, &msg1->data[0], msg1->height * msg1->width);
+      //cv::Mat filtered(msg1->height, msg1->width, CV_8UC1);
+      //memcpy(filtered.data, &msg1->data[0], msg1->height * msg1->width);
+      cv::Mat raw(msg1->height, msg1->width, CV_8UC1);
+      memcpy(raw.data, &msg1->data[0], msg1->height * msg1->width);
       t = okvis::Time(msg1->header.stamp.sec, msg1->header.stamp.nsec);
+
+      cv::Mat cv_img_eq;
+      cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+      clahe->setClipLimit(4);
+      clahe->apply(raw, cv_img_eq);
+      cv::Mat filtered = cv_img_eq.clone();
+
       if (start == okvis::Time(0.0)) {
         start = t;
       }
