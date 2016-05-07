@@ -113,6 +113,8 @@ void Publisher::setNodeHandle(ros::NodeHandle& nh)
     LOG(INFO) << "no mesh found for visualisation, set ros param mesh_file, if desired";
     meshMsg_.mesh_resource = "";
   }
+  pubDescribedFrame_ = nh_->advertise<okvis_ros::described_frame>(
+      "okvis_described_frame", 1);
 }
 
 // Write CSV header.
@@ -494,6 +496,79 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
 #endif
 }
 
+// Set the pose message that is published next.
+void Publisher::setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
+              const okvis::kinematics::Transformation& T_SC,
+              const std::vector<cv::KeyPoint>& keypoints,
+              const cv::Mat& descriptors)
+{
+
+  okvis::kinematics::Transformation T;
+  if (parameters_.publishing.trackedBodyFrame == FrameName::S) {
+    T = parameters_.publishing.T_Wc_W * T_WS;
+  } else if (parameters_.publishing.trackedBodyFrame == FrameName::B) {
+    T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
+  } else {
+    LOG(ERROR) <<
+        "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
+    T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
+  }
+
+  // fill header
+  describedFrameMsg_.header.frame_id = "world";
+  describedFrameMsg_.header.stamp = _t;
+  if ((ros::Time::now() - _t).toSec() > 10.0)
+    describedFrameMsg_.header.stamp = ros::Time::now();
+
+  // fill T_WS
+  Eigen::Quaterniond T_WS_q = T.q();
+  describedFrameMsg_.T_WS.rotation.x = T_WS_q.x();
+  describedFrameMsg_.T_WS.rotation.y = T_WS_q.y();
+  describedFrameMsg_.T_WS.rotation.z = T_WS_q.z();
+  describedFrameMsg_.T_WS.rotation.w = T_WS_q.w();
+  Eigen::Vector3d T_WS_r = T.r();
+  describedFrameMsg_.T_WS.translation.x = T_WS_r[0];
+  describedFrameMsg_.T_WS.translation.y = T_WS_r[1];
+  describedFrameMsg_.T_WS.translation.z = T_WS_r[2];
+
+  // fill T_SC
+  Eigen::Quaterniond T_SC_q = T_SC.q();
+  describedFrameMsg_.T_SC.rotation.x = T_SC_q.x();
+  describedFrameMsg_.T_SC.rotation.y = T_SC_q.y();
+  describedFrameMsg_.T_SC.rotation.z = T_SC_q.z();
+  describedFrameMsg_.T_SC.rotation.w = T_SC_q.w();
+  Eigen::Vector3d T_SC_r = T_SC.r();
+  describedFrameMsg_.T_SC.translation.x = T_SC_r[0];
+  describedFrameMsg_.T_SC.translation.y = T_SC_r[1];
+  describedFrameMsg_.T_SC.translation.z = T_SC_r[2];
+
+  // set keypoints
+  std::vector<cv::Point2f> points;
+  for(std::vector<cv::KeyPoint>::const_iterator it= keypoints.begin(); it!= keypoints.end();it++) {
+      points.push_back(it->pt);
+  }
+  cv::Mat pointmatrix(points);
+  describedFrameMsg_.keypoints = *cv_bridge::CvImage(describedFrameMsg_.header, "mono8", pointmatrix).toImageMsg();
+
+  // set keypoints_new
+  describedFrameMsg_.keypoints_new.clear();
+  for(std::vector<cv::KeyPoint>::const_iterator it= keypoints.begin(); it!= keypoints.end();it++) {
+    okvis_ros::keypoint kp;
+    kp.x = it->pt.x;
+    kp.y = it->pt.y;
+    kp.size = it->size;
+    kp.angle = it->angle;
+    kp.response = it->response;
+    kp.octave = it->octave;
+    kp.class_id = it->class_id;
+    describedFrameMsg_.keypoints_new.push_back(kp);
+  }
+
+  // set descriptors 
+  describedFrameMsg_.descriptors = *cv_bridge::CvImage(describedFrameMsg_.header, "mono8", descriptors).toImageMsg();
+          // remark: cv_bridge::CvImage() returns an image pointer and not the image itself.
+}
+
 // Publish the pose.
 void Publisher::publishPose()
 {
@@ -523,6 +598,27 @@ void Publisher::publishTransform()
     return;  // control the publish rate
   pubTransform_.publish(poseMsg_);  //publish stamped transform for MSF
   lastTransfromTime_ = _t;  // remember
+}
+
+// Publish the described frame for global map alignment.
+void Publisher::publishDescribedFrame()
+{
+  if ((_t - lastDescribedFrameTime_).toSec() < 1.0 / parameters_.publishing.publishRate)
+    return;  // control the publish rate
+  pubDescribedFrame_.publish(describedFrameMsg_);
+  lastDescribedFrameTime_ = _t;  // remember
+}
+
+// Set and publish described frame for global map alignment.
+void Publisher::publishDescribedFrameAsCallback(
+    const okvis::Time & t, const okvis::kinematics::Transformation & T_WS,
+    const okvis::kinematics::Transformation & T_SC,
+    const std::vector<cv::KeyPoint> & keypoints,
+    const cv::Mat & descriptors)
+{
+  setTime(t);
+  setDescribedFrame(T_WS, T_SC, keypoints, descriptors);
+  publishDescribedFrame();
 }
 
 // Set and publish pose.

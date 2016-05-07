@@ -24,4 +24,6 @@
   <depend>visualization_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>cv_bridge</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
 </package>

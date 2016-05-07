@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(okvis_ros)
 
-find_package(catkin REQUIRED  
+find_package(catkin REQUIRED
   pcl_conversions
   pcl_ros
   roscpp
   sensor_msgs
+  message_generation
   image_transport
   cv_bridge
   dynamic_reconfigure
@@ -13,12 +14,25 @@ find_package(catkin REQUIRED
   image_geometry
 )
 
+# create custom messages
+add_message_files(
+  FILES
+  described_frame.msg
+  keypoint.msg
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+)
+
 # generate dynamic reconfigure stuff
 generate_dynamic_reconfigure_options(cfg/Camera.cfg)
 
 catkin_package(
     DEPENDS
-    CATKIN_DEPENDS
+    CATKIN_DEPENDS message_runtime
     INCLUDE_DIRS include
     LIBRARIES ${PROJECT_NAME}
 )
