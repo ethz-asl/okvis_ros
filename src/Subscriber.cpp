@@ -109,11 +109,16 @@ void Subscriber::imageCallback(const sensor_msgs::ImageConstPtr& msg,/*
   const cv::Mat raw(msg->height, msg->width, CV_8UC1,
                     const_cast<uint8_t*>(&msg->data[0]), msg->step);
 
+  cv::Mat cv_img_eq;
+  cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+  clahe->setClipLimit(4);
+  clahe->apply(raw, cv_img_eq);
+  
   cv::Mat filtered;
   if (vioParameters_.optimization.useMedianFilter) {
-    cv::medianBlur(raw, filtered, 3);
+    cv::medianBlur(cv_img_eq, filtered, 3);
   } else {
-    filtered = raw.clone();
+    filtered = cv_img_eq.clone();
   }
 
   // adapt timestamp
@@ -250,11 +255,16 @@ void Subscriber::directFrameCallback(visensor::ViFrame::Ptr frame_ptr,
     return;
   }
 
+  cv::Mat cv_img_eq;
+  cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+  clahe->setClipLimit(4);
+  clahe->apply(raw, cv_img_eq);
+
   cv::Mat filtered;
   if (vioParameters_.optimization.useMedianFilter) {
-    cv::medianBlur(raw, filtered, 3);
+    cv::medianBlur(cv_img_eq, filtered, 3);
   } else {
-    filtered = raw.clone();
+    filtered = cv_img_eq.clone();
   }
 
   // adapt timestamp

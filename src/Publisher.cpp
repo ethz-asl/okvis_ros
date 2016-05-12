@@ -517,8 +517,6 @@ void Publisher::setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
   // fill header
   describedFrameMsg_.header.frame_id = "world";
   describedFrameMsg_.header.stamp = _t;
-  if ((ros::Time::now() - _t).toSec() > 10.0)
-    describedFrameMsg_.header.stamp = ros::Time::now();
 
   // fill T_WS
   Eigen::Quaterniond T_WS_q = T.q();
