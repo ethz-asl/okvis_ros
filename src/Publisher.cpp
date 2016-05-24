@@ -572,7 +572,7 @@ void Publisher::publishPose()
 {
   if ((_t - lastOdometryTime2_).toSec() < 1.0 / parameters_.publishing.publishRate)
     return;  // control the publish rate
-  pubTf_.sendTransform(poseMsg_);
+  //pubTf_.sendTransform(poseMsg_);
   if(!meshMsg_.mesh_resource.empty())
     pubMesh_.publish(meshMsg_);  //publish stamped mesh
   lastOdometryTime2_ = _t;  // remember
