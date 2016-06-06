@@ -182,7 +182,8 @@ class Publisher
   void setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
     const okvis::kinematics::Transformation& T_SC,
     const std::vector<cv::KeyPoint>& keypoints,
-    const cv::Mat& descriptors);
+    const cv::Mat& descriptors,
+    double distance);
 
   /// \}
   /// \name Publish
@@ -203,12 +204,14 @@ class Publisher
    * @param t     Timestamp of pose.
    * @param T_WS  The pose.
    * @param T_WS  The transformation between body and camera frame.
+   * @param distance The estimated distance to the structure 
    */
   void publishDescribedFrameAsCallback(const okvis::Time & t,
                               const okvis::kinematics::Transformation & T_WS,
                               const okvis::kinematics::Transformation & T_SC,
                               const std::vector<cv::KeyPoint> & keypoints,
-                              const cv::Mat & descriptors);
+                              const cv::Mat & descriptors,
+                              double distance);
 
   /**
    * @brief Set and publish pose.

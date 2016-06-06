@@ -500,7 +500,8 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
 void Publisher::setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
               const okvis::kinematics::Transformation& T_SC,
               const std::vector<cv::KeyPoint>& keypoints,
-              const cv::Mat& descriptors)
+              const cv::Mat& descriptors,
+              double distance)
 {
 
   okvis::kinematics::Transformation T;
@@ -565,6 +566,9 @@ void Publisher::setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
   // set descriptors 
   describedFrameMsg_.descriptors = *cv_bridge::CvImage(describedFrameMsg_.header, "mono8", descriptors).toImageMsg();
           // remark: cv_bridge::CvImage() returns an image pointer and not the image itself.
+
+  // set distance to structure
+  describedFrameMsg_.distance = distance;
 }
 
 // Publish the pose.
@@ -572,7 +576,7 @@ void Publisher::publishPose()
 {
   if ((_t - lastOdometryTime2_).toSec() < 1.0 / parameters_.publishing.publishRate)
     return;  // control the publish rate
-  //pubTf_.sendTransform(poseMsg_);
+  pubTf_.sendTransform(poseMsg_);
   if(!meshMsg_.mesh_resource.empty())
     pubMesh_.publish(meshMsg_);  //publish stamped mesh
   lastOdometryTime2_ = _t;  // remember
@@ -612,10 +616,11 @@ void Publisher::publishDescribedFrameAsCallback(
     const okvis::Time & t, const okvis::kinematics::Transformation & T_WS,
     const okvis::kinematics::Transformation & T_SC,
     const std::vector<cv::KeyPoint> & keypoints,
-    const cv::Mat & descriptors)
+    const cv::Mat & descriptors,
+    double distance)
 {
   setTime(t);
-  setDescribedFrame(T_WS, T_SC, keypoints, descriptors);
+  setDescribedFrame(T_WS, T_SC, keypoints, descriptors, distance);
   publishDescribedFrame();
 }
 
