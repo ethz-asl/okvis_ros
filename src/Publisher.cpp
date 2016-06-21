@@ -64,7 +64,7 @@ Publisher::~Publisher()
   // close file
   if (csvLandmarksFile_) {
     // write down also the current landmarks
-    if (csvLandmarksFile_->good()) {
+/*    if (csvLandmarksFile_->good()) {
       for (size_t l = 0; l < pointsMatched2_.size(); ++l) {
         Eigen::Vector4d landmark = pointsMatched2_.at(l).point;
         *csvLandmarksFile_ << std::setprecision(19) << pointsMatched2_.at(l).id
@@ -72,9 +72,11 @@ Publisher::~Publisher()
             << ", " << landmark[1] << ", " << landmark[2] << ", " << landmark[3]
             << ", " << pointsMatched2_.at(l).quality << std::endl;
       }
-    }
+    }*/
     csvLandmarksFile_->close();
   }
+  if (csvDescriptorsFile_)
+    csvDescriptorsFile_->close();
   if (csvFile_)
     csvFile_->close();
 }
@@ -111,6 +113,9 @@ void Publisher::setNodeHandle(ros::NodeHandle& nh)
     LOG(INFO) << "no mesh found for visualisation, set ros param mesh_file, if desired";
     meshMsg_.mesh_resource = "";
   }
+  pubDescribedFrame_ = nh_->advertise<okvis_ros::described_frame>(
+      "okvis_described_frame", 1);
+  pubGPS_ = nh_->advertise<sensor_msgs::NavSatFix>("/pegasus/gps", 1);
 }
 
 // Write CSV header.
@@ -139,6 +144,17 @@ bool Publisher::writeLandmarksCsvDescription()
   *csvLandmarksFile_ << ", " << "id" << ", " << "l_x" << ", " << "l_y" << ", "
                      << "l_z" << ", " << "l_w" << ", " << "quality, "
                      << "distance" << std::endl;
+  return true;
+}
+
+// Write CSV header for landmarks file.
+bool Publisher::writeDescriptorsCsvDescription()
+{
+  if (!csvDescriptorsFile_)
+    return false;
+  if (!csvDescriptorsFile_->good())
+    return false;
+  *csvDescriptorsFile_ << "id" << " " << "[descriptor]" << std::endl;
   return true;
 }
 
@@ -192,6 +208,33 @@ bool Publisher::setLandmarksCsvFile(std::string csvFileName)
       new std::fstream(csvFileName.c_str(), std::ios_base::out));
   writeLandmarksCsvDescription();
   return csvLandmarksFile_->good();
+}
+
+// Set a CVS file where the descriptors will be saved to.
+bool Publisher::setDescriptorsCsvFile(std::fstream& csvFile)
+{
+  if (csvDescriptorsFile_) {
+    csvDescriptorsFile_->close();
+  }
+  csvDescriptorsFile_.reset(&csvFile);
+  writeDescriptorsCsvDescription();
+  return csvDescriptorsFile_->good();
+}
+// Set a CVS file where the descriptors will be saved to.
+bool Publisher::setDescriptorsCsvFile(std::string& csvFileName)
+{
+  csvDescriptorsFile_.reset(
+      new std::fstream(csvFileName.c_str(), std::ios_base::out));
+  writeDescriptorsCsvDescription();
+  return csvDescriptorsFile_->good();
+}
+// Set a CVS file where the descriptors will be saved to.
+bool Publisher::setDescriptorsCsvFile(std::string csvFileName)
+{
+  csvDescriptorsFile_.reset(
+      new std::fstream(csvFileName.c_str(), std::ios_base::out));
+  writeDescriptorsCsvDescription();
+  return csvDescriptorsFile_->good();
 }
 
 // Set the pose message that is published next.
@@ -454,6 +497,81 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
 #endif
 }
 
+// Set the pose message that is published next.
+void Publisher::setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
+              const okvis::kinematics::Transformation& T_SC,
+              const std::vector<cv::KeyPoint>& keypoints,
+              const cv::Mat& descriptors,
+              double distance)
+{
+
+  okvis::kinematics::Transformation T;
+  if (parameters_.publishing.trackedBodyFrame == FrameName::S) {
+    T = parameters_.publishing.T_Wc_W * T_WS;
+  } else if (parameters_.publishing.trackedBodyFrame == FrameName::B) {
+    T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
+  } else {
+    LOG(ERROR) <<
+        "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
+    T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
+  }
+
+  // fill header
+  describedFrameMsg_.header.frame_id = "world";
+  describedFrameMsg_.header.stamp = _t;
+
+  // fill T_WS
+  Eigen::Quaterniond T_WS_q = T.q();
+  describedFrameMsg_.T_WS.rotation.x = T_WS_q.x();
+  describedFrameMsg_.T_WS.rotation.y = T_WS_q.y();
+  describedFrameMsg_.T_WS.rotation.z = T_WS_q.z();
+  describedFrameMsg_.T_WS.rotation.w = T_WS_q.w();
+  Eigen::Vector3d T_WS_r = T.r();
+  describedFrameMsg_.T_WS.translation.x = T_WS_r[0];
+  describedFrameMsg_.T_WS.translation.y = T_WS_r[1];
+  describedFrameMsg_.T_WS.translation.z = T_WS_r[2];
+
+  // fill T_SC
+  Eigen::Quaterniond T_SC_q = T_SC.q();
+  describedFrameMsg_.T_SC.rotation.x = T_SC_q.x();
+  describedFrameMsg_.T_SC.rotation.y = T_SC_q.y();
+  describedFrameMsg_.T_SC.rotation.z = T_SC_q.z();
+  describedFrameMsg_.T_SC.rotation.w = T_SC_q.w();
+  Eigen::Vector3d T_SC_r = T_SC.r();
+  describedFrameMsg_.T_SC.translation.x = T_SC_r[0];
+  describedFrameMsg_.T_SC.translation.y = T_SC_r[1];
+  describedFrameMsg_.T_SC.translation.z = T_SC_r[2];
+
+  // set keypoints
+  std::vector<cv::Point2f> points;
+  for(std::vector<cv::KeyPoint>::const_iterator it= keypoints.begin(); it!= keypoints.end();it++) {
+      points.push_back(it->pt);
+  }
+  cv::Mat pointmatrix(points);
+  describedFrameMsg_.keypoints = *cv_bridge::CvImage(describedFrameMsg_.header, "mono8", pointmatrix).toImageMsg();
+
+  // set keypoints_new
+  describedFrameMsg_.keypoints_new.clear();
+  for(std::vector<cv::KeyPoint>::const_iterator it= keypoints.begin(); it!= keypoints.end();it++) {
+    okvis_ros::keypoint kp;
+    kp.x = it->pt.x;
+    kp.y = it->pt.y;
+    kp.size = it->size;
+    kp.angle = it->angle;
+    kp.response = it->response;
+    kp.octave = it->octave;
+    kp.class_id = it->class_id;
+    describedFrameMsg_.keypoints_new.push_back(kp);
+  }
+
+  // set descriptors 
+  describedFrameMsg_.descriptors = *cv_bridge::CvImage(describedFrameMsg_.header, "mono8", descriptors).toImageMsg();
+          // remark: cv_bridge::CvImage() returns an image pointer and not the image itself.
+
+  // set distance to structure
+  describedFrameMsg_.distance = distance;
+}
+
 // Publish the pose.
 void Publisher::publishPose()
 {
@@ -485,6 +603,34 @@ void Publisher::publishTransform()
   lastTransfromTime_ = _t;  // remember
 }
 
+// Publish the described frame for global map alignment.
+void Publisher::publishDescribedFrame()
+{
+  if ((_t - lastDescribedFrameTime_).toSec() < 1.0 / parameters_.publishing.publishRate)
+    return;  // control the publish rate
+  pubDescribedFrame_.publish(describedFrameMsg_);
+  lastDescribedFrameTime_ = _t;  // remember
+}
+
+// Publish the GPS measurement in case of running OKVIS "synchronous", i.e. non real-time.
+void Publisher::publishGPS(sensor_msgs::NavSatFixConstPtr & msg)
+{
+  pubGPS_.publish(msg);
+}
+
+// Set and publish described frame for global map alignment.
+void Publisher::publishDescribedFrameAsCallback(
+    const okvis::Time & t, const okvis::kinematics::Transformation & T_WS,
+    const okvis::kinematics::Transformation & T_SC,
+    const std::vector<cv::KeyPoint> & keypoints,
+    const cv::Mat & descriptors,
+    double distance)
+{
+  setTime(t);
+  setDescribedFrame(T_WS, T_SC, keypoints, descriptors, distance);
+  publishDescribedFrame();
+}
+
 // Set and publish pose.
 void Publisher::publishStateAsCallback(
     const okvis::Time & t, const okvis::kinematics::Transformation & T_WS)
@@ -505,6 +651,7 @@ void Publisher::publishFullStateAsCallback(
   publishOdometry();
   publishTransform();
   publishPath();
+  csvSaveFullStateAsCallback(t,T_WS,speedAndBiases,omega_S);
 }
 
 // Set and write full state to CSV file.
@@ -575,12 +722,16 @@ void Publisher::csvSaveFullStateWithExtrinsicsAsCallback(
 // Set and publish landmarks.
 void Publisher::publishLandmarksAsCallback(
     const okvis::Time & /*t*/, const okvis::MapPointVector & actualLandmarks,
-    const okvis::MapPointVector & transferredLandmarks)
+    const okvis::MapPointVector & transferredLandmarks,
+    const okvis::MapPointDescriptorVector & transferredDescriptors)
 {
   if(parameters_.publishing.publishLandmarks){
     okvis::MapPointVector empty;
     setPoints(actualLandmarks, empty, transferredLandmarks);
     publishPoints();
+    const okvis::Time nulltime;
+    csvSaveLandmarksAsCallback(nulltime,actualLandmarks,transferredLandmarks);
+    csvSaveDescriptorsAsCallback(transferredDescriptors,transferredLandmarks);
   }
 }
 
@@ -593,14 +744,45 @@ void Publisher::csvSaveLandmarksAsCallback(
   setPoints(actualLandmarks, empty, transferredLandmarks);
   if (csvLandmarksFile_) {
     if (csvLandmarksFile_->good()) {
-      for (size_t l = 0; l < actualLandmarks.size(); ++l) {
-        Eigen::Vector4d landmark = actualLandmarks.at(l).point;
-        *csvLandmarksFile_ << std::setprecision(19) << actualLandmarks.at(l).id
+      for (size_t l = 0; l < transferredLandmarks.size(); ++l) {
+        // check infinity
+//        if (fabs((double) (transferredLandmarks[l].point[3])) < 1.0e-10)
+//          continue;
+        // check quality
+//        if (transferredLandmarks[l].quality < parameters_.publishing.landmarkQualityThreshold)
+//          continue;
+        Eigen::Vector4d landmark = transferredLandmarks.at(l).point;
+        *csvLandmarksFile_ << std::setprecision(19) << transferredLandmarks.at(l).id
             << ", " << std::scientific << std::setprecision(18) << landmark[0]
             << ", " << landmark[1] << ", " << landmark[2] << ", " << landmark[3]
-            << ", " << actualLandmarks.at(l).quality
-            // << ", " << actualLandmarks.at(l).distance
+            << ", " << transferredLandmarks.at(l).quality
+            << ", " << transferredLandmarks.at(l).distance
             << std::endl;
+      }
+    }
+  }
+}
+
+// Set and write landmarks to file.
+void Publisher::csvSaveDescriptorsAsCallback(
+    const okvis::MapPointDescriptorVector & transferredDescriptors,
+    const okvis::MapPointVector & transferredLandmarks)
+{
+  if (csvDescriptorsFile_) {
+    if (csvDescriptorsFile_->good()) {
+      for (size_t l = 0; l < transferredDescriptors.size(); ++l) {
+        // check infinity
+//        if (fabs((double) (transferredLandmarks[l].point[3])) < 1.0e-10)
+//          continue;
+        // check quality
+//        if (transferredLandmarks[l].quality < parameters_.publishing.landmarkQualityThreshold)
+//          continue;
+        *csvDescriptorsFile_ << transferredDescriptors.at(l).id;
+        // todo: how to access the descriptor (cv::Mat)
+//        *csvDescriptorsFile_ << ", " << transferredDescriptors.at(l).descriptor.size().width
+//                             << ", " << transferredDescriptors.at(l).descriptor.type();
+        *csvDescriptorsFile_ << " " << transferredDescriptors.at(l).descriptor;
+        *csvDescriptorsFile_ << std::endl;
       }
     }
   }

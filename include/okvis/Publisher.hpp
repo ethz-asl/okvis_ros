@@ -48,6 +48,7 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/PointCloud2.h>
+#include "sensor_msgs/NavSatFix.h"
 #include <visualization_msgs/Marker.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
@@ -58,7 +59,10 @@
 #pragma GCC diagnostic pop
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <okvis_ros/described_frame.h>
+#include <okvis_ros/keypoint.h>
 #include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include <okvis/kinematics/Transformation.hpp>
 #include <okvis/Parameters.hpp>
@@ -115,6 +119,16 @@ class Publisher
   /// \param csvFileName  The filename of a new file
   bool setLandmarksCsvFile(std::string csvFileName);
 
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFile      The file
+  bool setDescriptorsCsvFile(std::fstream& csvFile);
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFileName  The filename of a new file
+  bool setDescriptorsCsvFile(std::string& csvFileName);
+  /// \brief              Set a CVS file where the descriptors will be saved to.
+  /// \param csvFileName  The filename of a new file
+  bool setDescriptorsCsvFile(std::string csvFileName);
+
   /**
    * @brief Set the pose message that is published next.
    * @param T_WS The pose.
@@ -161,14 +175,47 @@ class Publisher
   ///        maximum is reached, the last pose is copied in a new path message. The rest are deleted.
   void setPath(const okvis::kinematics::Transformation& T_WS);
 
+  /**
+   * @brief Set the described frame message that is published next.
+   * @param T_WS The pose.
+   * @param T_SC The transform between body and camera frame.
+   */
+  void setDescribedFrame(const okvis::kinematics::Transformation& T_WS,
+    const okvis::kinematics::Transformation& T_SC,
+    const std::vector<cv::KeyPoint>& keypoints,
+    const cv::Mat& descriptors,
+    double distance);
+
   /// \}
   /// \name Publish
   /// \{
 
   /// \brief Publish the pose.
   void publishPose();
+
   /// \brief Publish the T_WS transform.
   void publishTransform();
+
+  /// \brief Publish the described frame for global map alignment.
+  void publishDescribedFrame();
+
+  /// \brief Republish the GPS measurement.
+  void publishGPS(sensor_msgs::NavSatFixConstPtr & msg);
+
+  /**
+   * @brief Set and publish the described frame for global map alignment.
+   * @remark This can be registered with the VioInterface.
+   * @param t     Timestamp of pose.
+   * @param T_WS  The pose.
+   * @param T_WS  The transformation between body and camera frame.
+   * @param distance The estimated distance to the structure 
+   */
+  void publishDescribedFrameAsCallback(const okvis::Time & t,
+                              const okvis::kinematics::Transformation & T_WS,
+                              const okvis::kinematics::Transformation & T_SC,
+                              const std::vector<cv::KeyPoint> & keypoints,
+                              const cv::Mat & descriptors,
+                              double distance);
 
   /**
    * @brief Set and publish pose.
@@ -201,7 +248,8 @@ class Publisher
    */
   void publishLandmarksAsCallback(
       const okvis::Time & t, const okvis::MapPointVector & actualLandmarks,
-      const okvis::MapPointVector & transferredLandmarks);
+      const okvis::MapPointVector & transferredLandmarks,
+      const okvis::MapPointDescriptorVector & transferredDescriptors);
 
   /**
    * @brief Set and write full state to CSV file.
@@ -244,6 +292,15 @@ class Publisher
       const okvis::Time & t, const okvis::MapPointVector & actualLandmarks,
       const okvis::MapPointVector & transferredLandmarks);
 
+  /**
+   * @brief Set and write descriptors to file.
+   * @remark This can be registered with the VioInterface.
+   * @param transferredDescriptors Descriptors that were marginalised out.
+   */
+  void csvSaveDescriptorsAsCallback(
+      const okvis::MapPointDescriptorVector & transferredDescriptors,
+      const okvis::MapPointVector & transferredLandmarks);
+
   /// @brief Publish the last set odometry.
   void publishOdometry();
   /// @brief Publish the last set points.
@@ -261,6 +318,8 @@ class Publisher
   bool writeCsvDescription();
   /// @brief Write CSV header for landmarks file.
   bool writeLandmarksCsvDescription();
+  /// @brief Write CSV header for landmarks file.
+  bool writeDescriptorsCsvDescription();
 
   /// @name Node and subscriber related
   /// @{
@@ -274,6 +333,8 @@ class Publisher
   ros::Publisher pubPath_;  ///< The publisher for the path.
   ros::Publisher pubTransform_; ///< The publisher for the transform.
   ros::Publisher pubMesh_; ///< The publisher for a robot / camera mesh.
+  ros::Publisher pubDescribedFrame_;  ///< The publisher for the described frames for matching to a global map.
+  ros::Publisher pubGPS_; ///< The publisher to republish the GPS in case of playing a bag "synchronous", i.e. non real time.
   std::vector<image_transport::Publisher> pubImagesVector_; ///< The publisher for the images.
   std::vector<image_transport::ImageTransport> imageTransportVector_; ///< The image transporters.
 
@@ -291,12 +352,14 @@ class Publisher
   std::vector<cv::Mat> images_; ///< The images.
   nav_msgs::Path path_; ///< The path message.
   visualization_msgs::Marker meshMsg_; ///< Mesh message.
+  okvis_ros::described_frame describedFrameMsg_;  ///< The message containing the described frame.
 
   /// @}
 
   ros::Time lastOdometryTime_;  ///< Timestamp of the last broadcasted transform. (publishPose())
   ros::Time lastOdometryTime2_; ///< Timestamp of the last published odometry message. (publishOdometry())
   ros::Time lastTransfromTime_; ///< Timestamp of the last published transform. (publishTransform())
+  ros::Time lastDescribedFrameTime_; ///< Timestamp of the last published described frame. (publishDescribedFrame())
 
   okvis::VioParameters parameters_; ///< All the parameters including publishing options.
 
@@ -304,6 +367,7 @@ class Publisher
 
   std::shared_ptr<std::fstream> csvFile_; ///< CSV file to save state in.
   std::shared_ptr<std::fstream> csvLandmarksFile_;  ///< CSV file to save landmarks in.
+  std::shared_ptr<std::fstream> csvDescriptorsFile_;  ///< CSV file to save descriptors in.
 
 };
 

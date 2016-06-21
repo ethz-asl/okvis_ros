@@ -1,0 +1,9 @@
+<launch>
+  <node name="okvis_node" pkg="okvis_ros" type="okvis_node_synchronous" output="screen" args="$(arg config) $(arg bag)">
+    <param name="mesh_file" value="firefly.dae" />
+    <param name="camera_topic_0" value="/cam0/image_raw" />
+    <param name="imu_topic" value="/imu0" />
+    <remap from="/camera0" to="/v4l/camera/image_raw" />
+    <remap from="/imu" to="/mavros/imu/data_raw" />
+  </node>
+</launch>

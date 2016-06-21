@@ -1,0 +1,8 @@
+<launch>
+  <node name="okvis_node" pkg="okvis_ros" type="okvis_node" output="screen">
+    <param name="config_filename" value="$(find okvis_ros)/okvis/config/config_wingtra70.yaml" />
+    <param name="mesh_file" value="firefly.dae" />
+    <remap from="/camera0" to="/v4l/camera/image_raw" />
+    <remap from="/imu" to="/mavros/imu/data_raw" />
+  </node>
+</launch>
