@@ -48,6 +48,7 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/PointCloud2.h>
+#include "sensor_msgs/NavSatFix.h"
 #include <visualization_msgs/Marker.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
@@ -198,6 +199,9 @@ class Publisher
   /// \brief Publish the described frame for global map alignment.
   void publishDescribedFrame();
 
+  /// \brief Republish the GPS measurement.
+  void publishGPS(sensor_msgs::NavSatFixConstPtr & msg);
+
   /**
    * @brief Set and publish the described frame for global map alignment.
    * @remark This can be registered with the VioInterface.
@@ -330,6 +334,7 @@ class Publisher
   ros::Publisher pubTransform_; ///< The publisher for the transform.
   ros::Publisher pubMesh_; ///< The publisher for a robot / camera mesh.
   ros::Publisher pubDescribedFrame_;  ///< The publisher for the described frames for matching to a global map.
+  ros::Publisher pubGPS_; ///< The publisher to republish the GPS in case of playing a bag "synchronous", i.e. non real time.
   std::vector<image_transport::Publisher> pubImagesVector_; ///< The publisher for the images.
   std::vector<image_transport::ImageTransport> imageTransportVector_; ///< The image transporters.
 

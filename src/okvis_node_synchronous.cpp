@@ -49,6 +49,7 @@
 #include <functional>
 
 #include "sensor_msgs/Imu.h"
+#include "sensor_msgs/NavSatFix.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #include <ros/ros.h>
@@ -174,8 +175,17 @@ int main(int argc, char **argv) {
       view_cam_iterators[i]++;
   }
 
+  // read GPS topic
+  std::string gps_topic("/pegasus/gps");
+  rosbag::View view_gps(
+      bag,
+      rosbag::TopicQuery(gps_topic));
+  rosbag::View::iterator view_gps_iterator = view_gps.begin();
+  LOG(INFO) << "No. GPS messages: " << view_gps.size();
+
   int counter = 0;
   okvis::Time start(0.0);
+  okvis::Time latest_gps_time(0.0);
   while (ros::ok()) {
     ros::spinOnce();
 	okvis_estimator.display();
@@ -221,6 +231,7 @@ int main(int argc, char **argv) {
 
       if (start == okvis::Time(0.0)) {
         start = t;
+        latest_gps_time = t;
       }
 
       // get all IMU measurements till then
@@ -242,6 +253,22 @@ int main(int argc, char **argv) {
 
         view_imu_iterator++;
       } while (view_imu_iterator != view_imu.end() && t_imu <= t);
+
+      // if there are new gps measurements, get and publish them
+      okvis::Time t_gps=start;
+      while (view_gps_iterator != view_gps.end() && latest_gps_time <= t && t_gps <= t) {
+        sensor_msgs::NavSatFixConstPtr msg = view_gps_iterator
+            ->instantiate<sensor_msgs::NavSatFix>();
+
+        t_gps = okvis::Time(msg->header.stamp.sec, msg->header.stamp.nsec);
+
+        // publish GPS measurement for GlobalMapAlignment node
+        if (t_gps - start > deltaT)
+          publisher.publishGPS(msg);
+
+        view_gps_iterator++;
+        latest_gps_time = t_gps;
+      }
 
       // add the image to the frontend for (blocking) processing
       if (t - start > deltaT)

@@ -115,6 +115,7 @@ void Publisher::setNodeHandle(ros::NodeHandle& nh)
   }
   pubDescribedFrame_ = nh_->advertise<okvis_ros::described_frame>(
       "okvis_described_frame", 1);
+  pubGPS_ = nh_->advertise<sensor_msgs::NavSatFix>("/pegasus/gps", 1);
 }
 
 // Write CSV header.
@@ -609,6 +610,12 @@ void Publisher::publishDescribedFrame()
     return;  // control the publish rate
   pubDescribedFrame_.publish(describedFrameMsg_);
   lastDescribedFrameTime_ = _t;  // remember
+}
+
+// Publish the GPS measurement in case of running OKVIS "synchronous", i.e. non real-time.
+void Publisher::publishGPS(sensor_msgs::NavSatFixConstPtr & msg)
+{
+  pubGPS_.publish(msg);
 }
 
 // Set and publish described frame for global map alignment.
