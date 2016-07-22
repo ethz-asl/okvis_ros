@@ -57,8 +57,8 @@ You will need to install the following dependencies,
 
 then download and expand the archive into your catkin workspace:
 
-    wget https://www.doc.ic.ac.uk/~sleutene/software/okvis_ros-1.1.2.zip
-    unzip okvis_ros-1.1.2.zip && rm okvis_ros-1.1.2.zip
+    wget https://www.doc.ic.ac.uk/~sleutene/software/okvis_ros-1.1.3.zip
+    unzip okvis_ros-1.1.3.zip && rm okvis_ros-1.1.3.zip
 
 Or, if you were given bitbucket access, clone the repository into your catkin
 workspace:
