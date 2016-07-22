@@ -295,7 +295,7 @@ void Publisher::setOdometry(const okvis::kinematics::Transformation& T_WS,
     odometryMsg_.header.frame_id = "world";
     T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
     t_W_ofFrame = (parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse()).r() - (parameters_.publishing.T_Wc_W * T_WS).r();  // r_BS_in_W
-    v_W_ofFrame = speedAndBiases.head<3>() + omega_W.cross(t_W_ofFrame);  // world-centric speedAndBiases.head<3>()
+    v_W_ofFrame = parameters_.publishing.T_Wc_W.C()*speedAndBiases.head<3>() + omega_W.cross(t_W_ofFrame);  // world-centric speedAndBiases.head<3>()
   } else {
     LOG(ERROR) <<
         "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
@@ -330,7 +330,7 @@ void Publisher::setOdometry(const okvis::kinematics::Transformation& T_WS,
     odometryMsg_.child_frame_id = "body";
   } else if (parameters_.publishing.velocitiesFrame == FrameName::Wc) {
     C_v.setIdentity();
-    C_omega = T_WS.C();
+    C_omega = parameters_.publishing.T_Wc_W.C() * T_WS.C();
     odometryMsg_.child_frame_id = "world";
   } else {
     LOG(ERROR) <<
@@ -365,6 +365,10 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
   pointsMatched_.clear();
   pointsUnmatched_.clear();
   pointsTransferred_.clear();
+
+  // transform points into custom world frame:
+  const Eigen::Matrix4d T_Wc_W = parameters_.publishing.T_Wc_W.T(); 
+
   for (size_t i = 0; i < pointsMatched.size(); ++i) {
     // check infinity
     if (fabs((double) (pointsMatched[i].point[3])) < 1.0e-8)
@@ -375,7 +379,7 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
       continue;
 
     pointsMatched_.push_back(pcl::PointXYZRGB());
-    const Eigen::Vector4d point = pointsMatched[i].point;
+    const Eigen::Vector4d point = T_Wc_W * pointsMatched[i].point;
     pointsMatched_.back().x = point[0] / point[3];
     pointsMatched_.back().y = point[1] / point[3];
     pointsMatched_.back().z = point[2] / point[3];
@@ -403,7 +407,7 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
       continue;
 
     pointsUnmatched_.push_back(pcl::PointXYZRGB());
-    const Eigen::Vector4d point = pointsUnmatched[i].point;
+    const Eigen::Vector4d point = T_Wc_W * pointsUnmatched[i].point;
     pointsUnmatched_.back().x = point[0] / point[3];
     pointsUnmatched_.back().y = point[1] / point[3];
     pointsUnmatched_.back().z = point[2] / point[3];
@@ -430,7 +434,7 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
       continue;
 
     pointsTransferred_.push_back(pcl::PointXYZRGB());
-    const Eigen::Vector4d point = pointsTransferred[i].point;
+    const Eigen::Vector4d point = T_Wc_W * pointsTransferred[i].point;
     pointsTransferred_.back().x = point[0] / point[3];
     pointsTransferred_.back().y = point[1] / point[3];
     pointsTransferred_.back().z = point[2] / point[3];
@@ -637,11 +641,24 @@ void Publisher::setPath(const okvis::kinematics::Transformation &T_WS)
   geometry_msgs::PoseStamped pose;
   pose.header.stamp = _t;
   pose.header.frame_id = "world";
-  const Eigen::Vector3d& r = T_WS.r();
+  okvis::kinematics::Transformation T = parameters_.publishing.T_Wc_W*T_WS;
+
+  // put the path into the origin of the selected tracked frame
+  if (parameters_.publishing.trackedBodyFrame == FrameName::S) {
+    // nothing
+  } else if (parameters_.publishing.trackedBodyFrame == FrameName::B) {
+    T = T * parameters_.imu.T_BS.inverse();
+  } else {
+    LOG(ERROR) <<
+        "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
+    T = T * parameters_.imu.T_BS.inverse();
+  }
+  
+  const Eigen::Vector3d& r = T.r();
   pose.pose.position.x = r[0];
   pose.pose.position.y = r[1];
   pose.pose.position.z = r[2];
-  const Eigen::Quaterniond& q = T_WS.q();
+  const Eigen::Quaterniond& q = T.q();
   pose.pose.orientation.x = q.x();
   pose.pose.orientation.y = q.y();
   pose.pose.orientation.z = q.z();
