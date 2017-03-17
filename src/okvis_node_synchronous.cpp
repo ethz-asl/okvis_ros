@@ -49,6 +49,8 @@
 #include <functional>
 
 #include "sensor_msgs/Imu.h"
+#include <cv_bridge/cv_bridge.h>
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #include <ros/ros.h>
@@ -205,8 +207,10 @@ int main(int argc, char **argv) {
     for(size_t i=0; i<numCameras;++i) {
       sensor_msgs::ImageConstPtr msg1 = view_cam_iterators[i]
           ->instantiate<sensor_msgs::Image>();
-      cv::Mat filtered(msg1->height, msg1->width, CV_8UC1);
-      memcpy(filtered.data, &msg1->data[0], msg1->height * msg1->width);
+
+      auto filtered_cv_img_ptr = cv_bridge::toCvCopy (msg1, "mono8");
+      auto filtered = filtered_cv_img_ptr->image;
+
       t = okvis::Time(msg1->header.stamp.sec, msg1->header.stamp.nsec);
       if (start == okvis::Time(0.0)) {
         start = t;
