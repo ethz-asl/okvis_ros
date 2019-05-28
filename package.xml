@@ -9,19 +9,21 @@
   <license>BSD</license>
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
- 
-  <depend>libgoogle-glog-dev</depend>
+
+  <depend>cv_bridge</depend>
   <depend>dynamic_reconfigure</depend>
-  <depend>image_transport</depend>
-  <depend>image_geometry</depend>
+  <depend>eigen_conversions</depend>
+  <depend>geometry_msgs</depend>
   <depend>gps_common</depend>
+  <depend>image_geometry</depend>
+  <depend>image_transport</depend>
+  <depend>libgoogle-glog-dev</depend>
+  <depend>maplab_msgs</depend>
   <depend>pcl_ros</depend>
-  <depend>roscpp</depend>
-  <depend>rosconsole</depend>
   <depend>rosbag</depend>
+  <depend>rosconsole</depend>
+  <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>cv_bridge</depend>
 </package>

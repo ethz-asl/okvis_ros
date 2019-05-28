@@ -4,7 +4,7 @@
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
- * 
+ *
  *   * Redistributions of source code must retain the above copyright notice,
  *     this list of conditions and the following disclaimer.
  *   * Redistributions in binary form must reproduce the above copyright notice,
@@ -44,8 +44,10 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #include <ros/package.h>
 #pragma GCC diagnostic pop
+#include <eigen_conversions/eigen_msg.h>
 #include <sensor_msgs/fill_image.h>
 #include <sensor_msgs/image_encodings.h>
+#include <maplab_msgs/OdometryWithImuBiases.h>
 
 #include <okvis/FrameTypedefs.hpp>
 
@@ -99,6 +101,7 @@ void Publisher::setNodeHandle(ros::NodeHandle& nh)
   pubPointsTransferred_ = nh_->advertise<sensor_msgs::PointCloud2>(
       "okvis_points_transferred", 1);
   pubObometry_ = nh_->advertise<nav_msgs::Odometry>("okvis_odometry", 1);
+  pubMaplabOdometry_ = nh_->advertise<maplab_msgs::OdometryWithImuBiases>("okvis_maplab_odometry", 1);
   pubPath_ = nh_->advertise<nav_msgs::Path>("okvis_path", 1);
   pubTransform_ = nh_->advertise<geometry_msgs::TransformStamped>(
       "okvis_transform", 1);
@@ -355,6 +358,93 @@ void Publisher::setOdometry(const okvis::kinematics::Transformation& T_WS,
   // linear acceleration ?? - would also need point of percussion mapping!!
 }
 
+// Set the odometry message that is published next.
+void Publisher::setMaplabOdometry(const okvis::kinematics::Transformation& T_WS,
+                                  const okvis::SpeedAndBiases& speedAndBiases,
+                                  const Eigen::Vector3d& omega_S)
+{
+
+  // header.frame_id is the frame in which the pose is given. I.e. world frame in our case
+  // child_frame_id is the frame in which the twist part of the odometry message is given.
+  // see also nav_msgs/Odometry Message documentation
+
+  maplabOdometryMsg_.header.stamp = _t;
+  okvis::kinematics::Transformation T; // the pose to be published. T_WS or T_WB depending on 'trackedBodyFrame'
+  Eigen::Vector3d omega_W = parameters_.publishing.T_Wc_W.C() * T_WS.C() * omega_S;
+  Eigen::Vector3d t_W_ofFrame;  // lever arm in W-system
+  Eigen::Vector3d v_W_ofFrame;  // velocity in W-system. v_S_in_W or v_B_in_W
+
+  if (parameters_.publishing.trackedBodyFrame == FrameName::S) {
+    maplabOdometryMsg_.header.frame_id = "world";
+    T = parameters_.publishing.T_Wc_W * T_WS;
+    t_W_ofFrame.setZero(); // r_SS_in_W
+    v_W_ofFrame = parameters_.publishing.T_Wc_W.C()*speedAndBiases.head<3>();  // world-centric speedAndBiases.head<3>()
+  } else if (parameters_.publishing.trackedBodyFrame == FrameName::B) {
+    maplabOdometryMsg_.header.frame_id = "world";
+    T = parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse();
+    t_W_ofFrame = (parameters_.publishing.T_Wc_W * T_WS * parameters_.imu.T_BS.inverse()).r() - (parameters_.publishing.T_Wc_W * T_WS).r();  // r_BS_in_W
+    v_W_ofFrame = parameters_.publishing.T_Wc_W.C()*speedAndBiases.head<3>() + omega_W.cross(t_W_ofFrame);  // world-centric speedAndBiases.head<3>()
+  } else {
+    LOG(ERROR) <<
+        "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
+    maplabOdometryMsg_.header.frame_id = "world";
+    T = parameters_.publishing.T_Wc_W * T_WS;
+    t_W_ofFrame.setZero(); // r_SS_in_W
+    v_W_ofFrame = parameters_.publishing.T_Wc_W.C()*speedAndBiases.head<3>();  // world-centric speedAndBiases.head<3>()
+  }
+
+  // fill orientation
+  Eigen::Quaterniond q = T.q();
+  maplabOdometryMsg_.pose.pose.orientation.x = q.x();
+  maplabOdometryMsg_.pose.pose.orientation.y = q.y();
+  maplabOdometryMsg_.pose.pose.orientation.z = q.z();
+  maplabOdometryMsg_.pose.pose.orientation.w = q.w();
+
+  // fill position
+  Eigen::Vector3d r = T.r();
+  maplabOdometryMsg_.pose.pose.position.x = r[0];
+  maplabOdometryMsg_.pose.pose.position.y = r[1];
+  maplabOdometryMsg_.pose.pose.position.z = r[2];
+
+  Eigen::Matrix3d C_v;
+  Eigen::Matrix3d C_omega;
+  if (parameters_.publishing.velocitiesFrame == FrameName::S) {
+    C_v = (parameters_.publishing.T_Wc_W * T_WS).inverse().C();
+    C_omega.setIdentity();
+    maplabOdometryMsg_.child_frame_id = "sensor";
+  } else if (parameters_.publishing.velocitiesFrame == FrameName::B) {
+    C_v = (parameters_.imu.T_BS * T_WS.inverse()).C() * parameters_.publishing.T_Wc_W.inverse().C();
+    C_omega = parameters_.imu.T_BS.C();
+    maplabOdometryMsg_.child_frame_id = "body";
+  } else if (parameters_.publishing.velocitiesFrame == FrameName::Wc) {
+    C_v.setIdentity();
+    C_omega = parameters_.publishing.T_Wc_W.C() * T_WS.C();
+    maplabOdometryMsg_.child_frame_id = "world";
+  } else {
+    LOG(ERROR) <<
+        "Speeds frame does not exist for publishing. Choose 'S', 'B', or 'Wc'.";
+    C_v = (parameters_.imu.T_BS * T_WS.inverse()).C() * parameters_.publishing.T_Wc_W.inverse().C();
+    C_omega = parameters_.imu.T_BS.C();
+    maplabOdometryMsg_.child_frame_id = "body";
+  }
+
+  // fill velocity
+  Eigen::Vector3d v = C_v * v_W_ofFrame;    // v_S_in_'speedsInThisFrame' or v_B_in_'speedsInThisFrame'
+  maplabOdometryMsg_.twist.twist.linear.x = v[0];
+  maplabOdometryMsg_.twist.twist.linear.y = v[1];
+  maplabOdometryMsg_.twist.twist.linear.z = v[2];
+
+  // fill angular velocity
+  Eigen::Vector3d omega = C_omega * omega_S;  // omega_in_'speedsInThisFrame'
+  maplabOdometryMsg_.twist.twist.angular.x = omega[0];
+  maplabOdometryMsg_.twist.twist.angular.y = omega[1];
+  maplabOdometryMsg_.twist.twist.angular.z = omega[2];
+
+  tf::vectorEigenToMsg(speedAndBiases.segment<3>(3), maplabOdometryMsg_.gyro_bias);
+  tf::vectorEigenToMsg(speedAndBiases.segment<3>(6), maplabOdometryMsg_.accel_bias);
+  // linear acceleration ?? - would also need point of percussion mapping!!
+}
+
 // Set the points that are published next.
 void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
                           const okvis::MapPointVector& pointsUnmatched,
@@ -367,7 +457,7 @@ void Publisher::setPoints(const okvis::MapPointVector& pointsMatched,
   pointsTransferred_.clear();
 
   // transform points into custom world frame:
-  const Eigen::Matrix4d T_Wc_W = parameters_.publishing.T_Wc_W.T(); 
+  const Eigen::Matrix4d T_Wc_W = parameters_.publishing.T_Wc_W.T();
 
   for (size_t i = 0; i < pointsMatched.size(); ++i) {
     // check infinity
@@ -475,6 +565,7 @@ void Publisher::publishOdometry()
   if ((_t - lastOdometryTime_).toSec() < 1.0 / parameters_.publishing.publishRate)
     return;  // control the publish rate
   pubObometry_.publish(odometryMsg_);
+  pubMaplabOdometry_.publish(maplabOdometryMsg_);
   if(!meshMsg_.mesh_resource.empty())
     pubMesh_.publish(meshMsg_);  //publish stamped mesh
   lastOdometryTime_ = _t;  // remember
@@ -505,6 +596,7 @@ void Publisher::publishFullStateAsCallback(
 {
   setTime(t);
   setOdometry(T_WS, speedAndBiases, omega_S);  // TODO: provide setters for this hack
+  setMaplabOdometry(T_WS, speedAndBiases, omega_S);
   setPath(T_WS);
   publishOdometry();
   publishTransform();
@@ -519,6 +611,7 @@ void Publisher::csvSaveFullStateAsCallback(
 {
   setTime(t);
   setOdometry(T_WS, speedAndBiases, omega_S);  // TODO: provide setters for this hack
+  setMaplabOdometry(T_WS, speedAndBiases, omega_S);
   if (csvFile_) {
     //LOG(INFO)<<"filePtr: ok; ";
     if (csvFile_->good()) {
@@ -550,6 +643,7 @@ void Publisher::csvSaveFullStateWithExtrinsicsAsCallback(
 {
   setTime(t);
   setOdometry(T_WS, speedAndBiases, omega_S);  // TODO: provide setters for this hack
+  setMaplabOdometry(T_WS, speedAndBiases, omega_S);
   if (csvFile_) {
     if (csvFile_->good()) {
       Eigen::Vector3d p_WS_W = T_WS.r();
@@ -653,7 +747,7 @@ void Publisher::setPath(const okvis::kinematics::Transformation &T_WS)
         "Pose frame does not exist for publishing. Choose 'S' or 'B'.";
     T = T * parameters_.imu.T_BS.inverse();
   }
-  
+
   const Eigen::Vector3d& r = T.r();
   pose.pose.position.x = r[0];
   pose.pose.position.y = r[1];

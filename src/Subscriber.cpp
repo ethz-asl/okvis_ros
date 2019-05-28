@@ -102,18 +102,31 @@ void Subscriber::setNodeHandle(ros::NodeHandle& nh)
   subImu_ = nh_->subscribe("/imu", 1000, &Subscriber::imuCallback, this);
 }
 
-void Subscriber::imageCallback(const sensor_msgs::ImageConstPtr& msg,/*
- const sensor_msgs::CameraInfoConstPtr& info,*/
-                               unsigned int cameraIndex)
-{
-  const cv::Mat raw(msg->height, msg->width, CV_8UC1,
-                    const_cast<uint8_t*>(&msg->data[0]), msg->step);
+void Subscriber::imageCallback(const sensor_msgs::ImageConstPtr &msg, /*
+  const sensor_msgs::CameraInfoConstPtr& info,*/
+                               unsigned int cameraIndex) {
+
+  cv::Mat mono8_img;
+  if (msg->encoding == "rgb8" || msg->encoding == "8UC3") {
+    const cv::Mat raw(msg->height, msg->width, CV_8UC3,
+                      const_cast<uint8_t *>(&msg->data[0]), msg->step);
+    cv::cvtColor(raw, mono8_img, CV_RGB2GRAY);
+  } else if (msg->encoding == "bgr8") {
+    const cv::Mat raw(msg->height, msg->width, CV_8UC3,
+                      const_cast<uint8_t *>(&msg->data[0]), msg->step);
+    cv::cvtColor(raw, mono8_img, CV_BGR2GRAY);
+  } else if (msg->encoding == "mono8" || msg->encoding == "8UC1") {
+    mono8_img = cv::Mat(msg->height, msg->width, CV_8UC1,
+                        const_cast<uint8_t *>(&msg->data[0]), msg->step);
+  } else {
+    LOG(FATAL) << "Image encoding: '" << msg->encoding << "' not supported!";
+  }
 
   cv::Mat filtered;
   if (vioParameters_.optimization.useMedianFilter) {
-    cv::medianBlur(raw, filtered, 3);
+    cv::medianBlur(mono8_img, filtered, 3);
   } else {
-    filtered = raw.clone();
+    filtered = mono8_img.clone();
   }
 
   // adapt timestamp

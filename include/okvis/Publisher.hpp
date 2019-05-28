@@ -59,6 +59,7 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <image_transport/image_transport.h>
+#include <maplab_msgs/OdometryWithImuBiases.h>
 
 #include <okvis/kinematics/Transformation.hpp>
 #include <okvis/Parameters.hpp>
@@ -130,6 +131,16 @@ class Publisher
   void setOdometry(const okvis::kinematics::Transformation& T_WS,
                    const okvis::SpeedAndBiases& speedAndBiases,
                    const Eigen::Vector3d& omega_S);
+
+ /**
+  * @brief Set the maplab odometry message that is published next.
+  * @param T_WS The pose.
+  * @param speedAndBiases The speeds and biases.
+  * @param omega_S Rotational speed of Sensor frame (w.r.t. to inertial frame W)
+  */
+  void setMaplabOdometry(const okvis::kinematics::Transformation &T_WS,
+                         const okvis::SpeedAndBiases &speedAndBiases,
+                         const Eigen::Vector3d &omega_S);
 
   /// \brief Set the parameters
   /// @param parameters The parameters.
@@ -271,6 +282,7 @@ class Publisher
   ros::Publisher pubPointsUnmatched_; ///< The publisher for unmatched points.
   ros::Publisher pubPointsTransferred_; ///< The publisher for transferred/marginalised points.
   ros::Publisher pubObometry_;  ///< The publisher for the odometry.
+  ros::Publisher pubMaplabOdometry_;  ///< The publisher for the maplab odometry msg.  
   ros::Publisher pubPath_;  ///< The publisher for the path.
   ros::Publisher pubTransform_; ///< The publisher for the transform.
   ros::Publisher pubMesh_; ///< The publisher for a robot / camera mesh.
@@ -284,6 +296,7 @@ class Publisher
   ros::Time _t; ///< Header timestamp.
   geometry_msgs::TransformStamped poseMsg_; ///< Pose message.
   nav_msgs::Odometry odometryMsg_;  ///< Odometry message.
+  maplab_msgs::OdometryWithImuBiases maplabOdometryMsg_;  ///< Odometry message.
   okvis::MapPointVector pointsMatched2_;  ///< Matched points vector.
   pcl::PointCloud<pcl::PointXYZRGB> pointsMatched_; ///< Point cloud for matched points.
   pcl::PointCloud<pcl::PointXYZRGB> pointsUnmatched_; ///< Point cloud for unmatched points.

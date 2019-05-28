@@ -1,16 +1,17 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(okvis_ros)
 
-find_package(catkin REQUIRED  
+find_package(catkin REQUIRED
+  cv_bridge
+  dynamic_reconfigure
+  eigen_conversions
+  geometry_msgs
+  image_geometry
+  image_transport
   pcl_conversions
   pcl_ros
   roscpp
   sensor_msgs
-  image_transport
-  cv_bridge
-  dynamic_reconfigure
-  geometry_msgs
-  image_geometry
 )
 
 # generate dynamic reconfigure stuff
